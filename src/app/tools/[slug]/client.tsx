@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { tools } from "@/lib/constants"
-import { ToolWrapper } from "@/components/tools/tool-wrapper"
-import { MergeWrapper } from "@/components/tools/merge-wrapper"
-import { useState, useEffect } from "react"
+import { useState, useEffect, lazy, Suspense } from "react"
+
+const ToolWrapper = lazy(() => import("@/components/tools/tool-wrapper").then(m => ({ default: m.ToolWrapper })))
+const MergeWrapper = lazy(() => import("@/components/tools/merge-wrapper").then(m => ({ default: m.MergeWrapper })))
 
 export default function ToolPageClient({ slug }: { slug: string }) {
   const [config, setConfig] = useState<any>(undefined)
@@ -36,9 +37,9 @@ export default function ToolPageClient({ slug }: { slug: string }) {
     )
   }
 
-  if (slug === "pdf-merge") return <MergeWrapper />
+  if (slug === "pdf-merge") return <Suspense fallback={<div className="pt-32 text-center px-5"><div className="animate-spin w-6 h-6 border-2 border-[#D97757] border-t-transparent rounded-full mx-auto" /></div>}><MergeWrapper /></Suspense>
 
-  if (config) return <ToolWrapper config={config} />
+  if (config) return <Suspense fallback={<div className="pt-32 text-center px-5"><div className="animate-spin w-6 h-6 border-2 border-[#D97757] border-t-transparent rounded-full mx-auto" /></div>}><ToolWrapper config={config} /></Suspense>
 
   return (
     <div className="pt-20 sm:pt-24 pb-16 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
