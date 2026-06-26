@@ -3,7 +3,9 @@ import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import ToolPageClient from "./client"
 
-export default function ToolPage() {
+export default async function ToolPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+
   return (
     <>
       <Header />
@@ -13,7 +15,7 @@ export default function ToolPage() {
           <p className="text-[13px] text-[#BEB7AC] mt-4">Loading tool...</p>
         </div>
       }>
-        <ToolPageClient />
+        <ToolPageClient slug={slug} />
       </Suspense>
       <Footer />
     </>

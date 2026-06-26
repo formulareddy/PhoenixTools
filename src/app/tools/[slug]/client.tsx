@@ -1,28 +1,20 @@
 "use client"
 
-import { useParams } from "next/navigation"
 import Link from "next/link"
 import { tools } from "@/lib/constants"
 import { ToolWrapper } from "@/components/tools/tool-wrapper"
 import { MergeWrapper } from "@/components/tools/merge-wrapper"
 import { useState, useEffect } from "react"
 
-export default function ToolPageClient() {
-  const params = useParams()
-  const slug = params?.slug as string | undefined
+export default function ToolPageClient({ slug }: { slug: string }) {
   const [config, setConfig] = useState<any>(undefined)
 
   useEffect(() => {
-    if (!slug) return
     import("@/components/tools/tool-configs").then((mod) => {
       const configs = mod.getToolConfigs()
       setConfig(configs[slug] || null)
     })
   }, [slug])
-
-  if (!slug) {
-    return <div className="pt-32 text-center px-5"><div className="animate-spin w-6 h-6 border-2 border-[#D97757] border-t-transparent rounded-full mx-auto" /></div>
-  }
 
   const tool = tools.find((t) => t.id === slug)
 
