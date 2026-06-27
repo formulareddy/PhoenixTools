@@ -9,6 +9,10 @@ import type { ToolConfig, ProgressState, PDFAnalysis } from "./types"
 import type { SSEProgress, SSEComplete } from "./job-client"
 import { startJob } from "./job-client"
 import { processTextTool, downloadText } from "./text-tools-handler"
+import { processPdfTool } from "@/lib/pdf-client"
+import { processImageTool } from "@/lib/image-client"
+import { processVideoTool } from "@/lib/video-client"
+import { processAudioTool } from "@/lib/audio-client"
 import { stateLabel } from "./types"
 import { useSubscription } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
@@ -56,6 +60,7 @@ export function ToolWrapper({ config }: ToolWrapperProps) {
   const isCompress = config.id === "pdf-compress"
   const isImageTool = config.id.startsWith("image-") || config.id === "remove-bg" || config.id === "image-watermark" || config.id === "image-blur" || config.id === "image-rotate" || config.id === "image-crop" || config.id === "image-upscale" || config.id === "remove-objects" || config.id === "colorize-photo" || config.id === "restore-photo"
   const isVideoTool = config.id.startsWith("video-") || config.id === "extract-audio" || config.id === "merge-video" || config.id === "resize-video" || config.id === "crop-video" || config.id === "add-audio-to-video" || config.id === "change-video-speed" || config.id === "mute-video" || config.id === "rotate-flip-video"
+  const isAudioTool = config.id.startsWith("audio-") || config.id === "trim-audio" || config.id === "merge-audio" || config.id === "remove-noise" || config.id === "extract-audio-from-video" || config.id === "voice-changer" || config.id === "audio-cutter" || config.id === "audio-metadata" || config.id === "audio-recorder" || config.id === "audio-tracks"
   const isAITool = config.id.startsWith("ai-")
   const isTextTool = ["word-counter", "text-diff", "unit-converter", "case-converter", "text-cleaner", "find-replace", "lorem-ipsum", "text-to-slug", "duplicate-remover", "text-sorter", "char-counter", "base64", "text-base64", "url-encoder", "dev-url-encoder", "json-formatter", "text-json-formatter", "dev-json-minifier", "text-json-minifier", "text-js-formatter", "dev-js-formatter", "text-js-minifier", "dev-js-minifier", "jwt-decoder", "dev-jwt-decoder", "regex-tester", "dev-regex-tester", "hash-generator", "dev-hash-generator", "dev-sql-formatter", "sql-formatter", "dev-css-formatter", "text-css-formatter", "css-minifier", "html-formatter", "seo-analyzer", "keyword-research", "meta-tag-generator", "serp-preview", "sitemap-generator", "robots-txt-generator", "keyword-density", "seo-title-generator", "seo-meta-desc", "redirect-checker", "google-index-checker", "backlink-checker", "invoice-generator", "receipt-generator", "quotation-generator", "purchase-order-generator", "business-proposal", "contract-generator", "profit-margin", "gst-vat-calculator", "salary-calculator", "business-name-generator", "qr-code-generator", "qr-generator", "utm-builder", "hashtag-generator", "social-caption", "email-subject", "cta-generator", "landing-page-headline", "ad-copy", "marketing-calendar", "youtube-title", "youtube-desc"].includes(config.id)
   const aiToolsNoFile = ["ai-writer", "ai-resume", "ai-chat", "ai-email", "ai-cover-letter", "ai-blog", "ai-social", "ai-code", "ai-translate", "ai-rewrite", "ai-paraphrase", "ai-image-gen"]
@@ -281,68 +286,62 @@ export function ToolWrapper({ config }: ToolWrapperProps) {
       return
     }
 
-    setState("uploading")
-    setProgress(0)
-    setDetail(isAITool ? "Connecting to AI model..." : "Uploading to processing server")
-    setError(null)
-    setResult(null)
+    // Client-side processing for PDF, Image, Video, Audio tools
+    if (!isAITool && files.length > 0) {
+      setState("processing")
+      setProgress(10)
+      setDetail("Processing in your browser...")
+      setError(null)
+      setResult(null)
 
-    try {
-      abortRef.current = new AbortController()
-
-      const processOptions = { ...options }
-      if (config.id === "audio-tracks" && selectedTracks.length > 0) {
-        processOptions.tracks = selectedTracks.join(",")
-      }
-
-      await startJob(config.id, files, processOptions, (evt) => {
-        if (evt.type === "progress") {
-          const p = evt.data as SSEProgress
-          if (p.state === "ready") {
-            setProgress(100)
-            setDetail("")
-          } else {
-            setState(p.state as ProgressState)
-            setProgress(p.pct)
-            if (p.detail) setDetail(p.detail)
-          }
-        } else if (evt.type === "complete") {
-          const c = evt.data as SSEComplete
-          if (c.outputBase64) {
-            try {
-              const binary = atob(c.outputBase64)
-              const bytes = new Uint8Array(binary.length)
-              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-              const ext = c.fileName.split(".").pop()?.toLowerCase() || ""
-              const mimeMap: Record<string, string> = {
-                pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
-                webp: "image/webp", gif: "image/gif", bmp: "image/bmp",
-                mp4: "video/mp4", webm: "video/webm", avi: "video/x-msvideo", mov: "video/quicktime",
-                mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", flac: "audio/flac",
-                docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                zip: "application/zip", txt: "text/plain", html: "text/html", json: "application/json",
-              }
-              const mime = mimeMap[ext] || "application/octet-stream"
-              const blob = new Blob([bytes], { type: mime })
-              c.downloadUrl = URL.createObjectURL(blob)
-            } catch {}
-          }
-          setResult(c)
-          setState("ready")
-          setProgress(100)
-          setDetail("")
-        } else if (evt.type === "error") {
-          setError(evt.data.error || "Processing failed")
-          setState("error")
+      try {
+        const processOptions = { ...options }
+        if (config.id === "audio-tracks" && selectedTracks.length > 0) {
+          processOptions.tracks = selectedTracks.join(",")
         }
-      }, abortRef.current.signal, isCompress && sessionId ? sessionId : undefined)
 
-    } catch (err: any) {
-      if (err.name !== "AbortError") {
+        setProgress(30)
+        let clientResult: { blob: Blob; filename: string; pagePreviews?: string[] }
+
+        if (isVideoTool) {
+          setDetail("Loading FFmpeg WASM...")
+          setProgress(20)
+          clientResult = await processVideoTool(config.id, files, processOptions)
+        } else if (isImageTool) {
+          setDetail("Processing image...")
+          clientResult = await processImageTool(config.id, files, processOptions)
+        } else if (config.id.startsWith("audio-") || config.id === "trim-audio" || config.id === "merge-audio" || config.id === "remove-noise" || config.id === "extract-audio-from-video" || config.id === "voice-changer" || config.id === "audio-cutter" || config.id === "audio-metadata" || config.id === "audio-recorder" || config.id === "audio-tracks") {
+          setDetail("Loading audio processor...")
+          setProgress(20)
+          clientResult = await processAudioTool(config.id, files, processOptions)
+        } else {
+          setDetail("Processing PDF...")
+          clientResult = await processPdfTool(config.id, files, processOptions)
+        }
+
+        setProgress(90)
+        setDetail("Finalizing...")
+
+        const url = URL.createObjectURL(clientResult.blob)
+        setResult({
+          downloadUrl: url,
+          fileName: clientResult.filename,
+          size: clientResult.blob.size,
+          originalSize: files[0]?.size || 0,
+          originalName: files[0]?.name || "",
+          jobId: "local",
+          pagePreviews: clientResult.pagePreviews,
+        })
+        setProgress(100)
+        setDetail("")
+        setState("ready")
+      } catch (err: any) {
         setError(err.message || "Processing failed")
         setState("error")
       }
+      return
     }
+
   }, [files, options, config.id, isCompress, sessionId, isAITool, isTextTool, isPremium, canUseTool, trackUsage, getCategoryUsage, toolCategory, user?.id, validateWithServer])
 
   const handleRetry = useCallback(() => { doProcess() }, [doProcess])
@@ -379,7 +378,7 @@ export function ToolWrapper({ config }: ToolWrapperProps) {
           <div className="flex flex-wrap gap-3 mt-4 text-[12px] text-[#BEB7AC]">
             <span className="px-2.5 py-1 rounded-lg border border-[rgba(255,255,255,0.06)]">{isAITool ? "AI-Powered" : isTextTool ? "Client-Side" : isVideoTool ? "Video files" : isImageTool ? "Image files" : "PDF only"}</span>
             <span className="px-2.5 py-1 rounded-lg border border-[rgba(255,255,255,0.06)]">{isAITool ? "Free AI Models" : isTextTool ? "Instant Results" : `Max ${isPremium ? "4 GB" : "500 MB"}`}</span>
-            <span className="px-2.5 py-1 rounded-lg border border-[rgba(255,255,255,0.06)]">{isAITool ? "Streaming Response" : isTextTool ? "No Upload Needed" : isVideoTool ? "FFmpeg server processing" : isImageTool ? "Fast server processing" : "Server Processing"}</span>
+            <span className="px-2.5 py-1 rounded-lg border border-[rgba(255,255,255,0.06)]">{isAITool ? "Streaming Response" : isTextTool ? "No Upload Needed" : isVideoTool ? "FFmpeg WASM in browser" : isImageTool ? "Canvas API in browser" : isAudioTool ? "FFmpeg WASM in browser" : "Client-Side Processing"}</span>
           </div>
         </motion.div>
 
@@ -911,32 +910,34 @@ export function ToolWrapper({ config }: ToolWrapperProps) {
                     {isAITool
                       ? `Generated with AI — ${(result.size / 1024).toFixed(0)} KB ready to download`
                       : isVideoTool
-                        ? `Real FFmpeg processing — ${(result.size / 1024 / 1024).toFixed(1)} MB ready to download`
+                        ? `FFmpeg WASM processing — ${(result.size / 1024 / 1024).toFixed(1)} MB ready to download`
                         : isImageTool
-                          ? `Processed and verified — ${(result.size / 1024).toFixed(0)} KB ready to download`
-                          : isCompress && result.isOptimized
-                            ? "This file is already using efficient compression"
-                            : isCompress
-                              ? `Reduced by ${result.compressSavings || savings}% — verified and ready to download`
-                              : config.id === "pdf-extract-pages"
-                                ? `${result.mergeTotalPages || 0} pages extracted — ready to download`
-                                : config.id === "pdf-organize"
-                                  ? `${result.mergeTotalPages || 0} pages reorganized — ready to download`
-                                  : config.id === "pdf-to-text"
-                                    ? `Text extracted from ${result.mergeTotalPages || 0} pages — UTF-8 plain text`
-                                    : config.id === "pdf-sign"
-                                      ? `Signature "${options.name || "Signature"}" placed — ${result.mergeTotalPages || 0} pages`
-                                      : config.id === "pdf-repair"
-                                        ? `PDF rebuilt — ${result.mergeTotalPages || 0} pages recovered`
-                                        : config.id === "pdf-redact"
-                                          ? `Content redacted — ${result.mergeTotalPages || 0} pages`
-                                          : config.id === "pdf-crop"
-                                            ? `Pages cropped by ${options.margin || "20"}pt — ${result.mergeTotalPages || 0} pages`
-                                            : config.id === "pdf-metadata"
-                                              ? (result.metadataSummary ? "Existing metadata: " + result.metadataSummary.split("\n")[0].replace("Original Title: ", "") : "Metadata updated")
-                                              : config.id === "pdf-compare"
-                                                ? "Comparison report generated — download to view full details"
-                                                : "File processed on server — verified and ready to download"
+                          ? `Canvas API processed — ${(result.size / 1024).toFixed(0)} KB ready to download`
+                          : isAudioTool
+                            ? `FFmpeg WASM processing — ${(result.size / 1024).toFixed(0)} KB ready to download`
+                            : isCompress && result.isOptimized
+                              ? "This file is already using efficient compression"
+                              : isCompress
+                                ? `Reduced by ${result.compressSavings || savings}% — ready to download`
+                                : config.id === "pdf-extract-pages"
+                                  ? `${result.mergeTotalPages || 0} pages extracted — ready to download`
+                                  : config.id === "pdf-organize"
+                                    ? `${result.mergeTotalPages || 0} pages reorganized — ready to download`
+                                    : config.id === "pdf-to-text"
+                                      ? `Text extracted from ${result.mergeTotalPages || 0} pages — UTF-8 plain text`
+                                      : config.id === "pdf-sign"
+                                        ? `Signature "${options.name || "Signature"}" placed — ${result.mergeTotalPages || 0} pages`
+                                        : config.id === "pdf-repair"
+                                          ? `PDF rebuilt — ${result.mergeTotalPages || 0} pages recovered`
+                                          : config.id === "pdf-redact"
+                                            ? `Content redacted — ${result.mergeTotalPages || 0} pages`
+                                            : config.id === "pdf-crop"
+                                              ? `Pages cropped by ${options.margin || "20"}pt — ${result.mergeTotalPages || 0} pages`
+                                              : config.id === "pdf-metadata"
+                                                ? (result.metadataSummary ? "Existing metadata: " + result.metadataSummary.split("\n")[0].replace("Original Title: ", "") : "Metadata updated")
+                                                : config.id === "pdf-compare"
+                                                  ? "Comparison report generated — download to view full details"
+                                                  : "Processed locally in your browser — ready to download"
                     }
                   </p>
                 </div>
@@ -1122,7 +1123,7 @@ export function ToolWrapper({ config }: ToolWrapperProps) {
                 <FileText className={`w-4 h-4 shrink-0 ${isAITool ? "text-[#6366F1]" : isTextTool ? "text-[#10B981]" : "text-[#D97757]"}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] text-[#F6F3EE] truncate">{result.fileName}</p>
-                  <p className="text-[12px] text-[#BEB7AC]">{isTextTool ? `${(result.size / 1024).toFixed(1)} KB · Processed locally` : isVideoTool || isImageTool ? `${(result.size / 1024 / 1024).toFixed(1)} MB` : `${(result.size / 1024 / 1024).toFixed(1)} MB`} &middot; {isTextTool ? "Instant download" : isVideoTool ? "Real FFmpeg processing" : isImageTool ? "Server processed" : isAITool ? "AI generated" : "Verified on server"}</p>
+                  <p className="text-[12px] text-[#BEB7AC]">{isTextTool ? `${(result.size / 1024).toFixed(1)} KB · Processed locally` : isVideoTool || isImageTool ? `${(result.size / 1024 / 1024).toFixed(1)} MB` : `${(result.size / 1024 / 1024).toFixed(1)} MB`} &middot; {isTextTool ? "Instant download" : isVideoTool ? "FFmpeg WASM in browser" : isImageTool ? "Canvas API in browser" : isAudioTool ? "FFmpeg WASM in browser" : isAITool ? "AI generated" : "Processed locally"}</p>
                 </div>
               </div>
 
