@@ -5,15 +5,18 @@ import { tools } from "@/lib/constants"
 import { getToolConfigs } from "@/components/tools/tool-configs"
 import dynamic from "next/dynamic"
 
-const ToolWrapper = dynamic(() => import("@/components/tools/tool-wrapper").then(m => ({ default: m.ToolWrapper })), { ssr: false })
-const MergeWrapper = dynamic(() => import("@/components/tools/merge-wrapper").then(m => ({ default: m.MergeWrapper })), { ssr: false })
-
-const loadingFallback = (
+const ToolWrapper = dynamic(() => import("@/components/tools/tool-wrapper").then(m => ({ default: m.ToolWrapper })), { ssr: false, loading: () => (
   <div className="pt-32 text-center px-5">
     <div className="animate-spin w-6 h-6 border-2 border-[#D97757] border-t-transparent rounded-full mx-auto" />
     <p className="text-[13px] text-[#BEB7AC] mt-4">Loading tool...</p>
   </div>
-)
+) })
+const MergeWrapper = dynamic(() => import("@/components/tools/merge-wrapper").then(m => ({ default: m.MergeWrapper })), { ssr: false, loading: () => (
+  <div className="pt-32 text-center px-5">
+    <div className="animate-spin w-6 h-6 border-2 border-[#D97757] border-t-transparent rounded-full mx-auto" />
+    <p className="text-[13px] text-[#BEB7AC] mt-4">Loading tool...</p>
+  </div>
+) })
 
 export default function ToolPageClient({ slug }: { slug: string }) {
   const tool = tools.find((t) => t.id === slug)
@@ -29,9 +32,9 @@ export default function ToolPageClient({ slug }: { slug: string }) {
     )
   }
 
-  if (slug === "pdf-merge") return <div>{loadingFallback}</div>
+  if (slug === "pdf-merge") return <MergeWrapper />
 
-  if (config) return <div>{loadingFallback}</div>
+  if (config) return <ToolWrapper config={config} />
 
   return (
     <div className="pt-20 sm:pt-24 pb-16 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
