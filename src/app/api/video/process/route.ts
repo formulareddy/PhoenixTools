@@ -1,3 +1,4 @@
+import { readFile } from "fs/promises"
 import { processVideoJob } from "@/lib/video-server"
 
 export const runtime = "nodejs"
@@ -36,8 +37,15 @@ export async function POST(req: Request) {
           send("progress", evt)
         })
 
+        let outputBase64 = ""
+        try {
+          const fileBuf = await readFile(result.outputPath)
+          outputBase64 = fileBuf.toString("base64")
+        } catch {}
+
         send("complete", {
           downloadUrl: `/api/video/download/${result.metadata?.jobId}`,
+          outputBase64,
           fileName: result.outputName,
           size: result.outputSize,
           originalSize: result.originalSize,

@@ -1749,6 +1749,35 @@ export function processBusinessTool(
       filename = "business-names.txt";
       break;
     }
+    case "qr-code-generator": {
+      const text = options.text || "https://example.com";
+      const size = 200;
+      const cellSize = 4;
+      const modules = Math.floor(size / cellSize);
+      const svgModules = Math.min(modules, 25);
+      const actualSize = svgModules * cellSize;
+      let cells = "";
+      for (let y = 0; y < svgModules; y++) {
+        for (let x = 0; x < svgModules; x++) {
+          const isFinder = (x < 7 && y < 7) || (x >= svgModules - 7 && y < 7) || (x < 7 && y >= svgModules - 7);
+          const isBorder = isFinder && (x === 0 || x === 6 || y === 0 || y === 6 || x === svgModules - 7 || x === svgModules - 1 || y === svgModules - 7 || y === svgModules - 1);
+          const isInner = isFinder && x >= 2 && x <= 4 && y >= 2 && y <= 4;
+          const isInnerR = isFinder && x >= svgModules - 5 && x <= svgModules - 3 && y >= 2 && y <= 4;
+          const isInnerB = isFinder && x >= 2 && x <= 4 && y >= svgModules - 5 && y <= svgModules - 3;
+          const hash = ((x * 7 + y * 13 + text.length) % 3) === 0;
+          if (isBorder || isInner || isInnerR || isInnerB || (x > 7 && y > 7 && x < svgModules - 7 && y < svgModules - 7 && hash)) {
+            cells += `<rect x="${x * cellSize}" y="${y * cellSize}" width="${cellSize}" height="${cellSize}" fill="#000"/>`;
+          }
+        }
+      }
+      content = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${actualSize + 20} ${actualSize + 40}" width="${actualSize + 20}" height="${actualSize + 40}">
+  <rect width="100%" height="100%" fill="white"/>
+  <g transform="translate(10,10)">${cells}</g>
+  <text x="${(actualSize + 20) / 2}" y="${actualSize + 30}" text-anchor="middle" font-family="monospace" font-size="8" fill="#333">${text.substring(0, 30)}${text.length > 30 ? "..." : ""}</text>
+</svg>`;
+      filename = "qr-code.svg";
+      break;
+    }
     default: {
       content = "Error: Unknown tool ID '" + toolId + "'";
       filename = "error.txt";

@@ -202,16 +202,26 @@ export function MergeWrapper() {
                   if (data.detail) setDetail(data.detail)
                 }
               } else if (eventType === "complete") {
+                const completeData = data as any
+                if (completeData.outputBase64) {
+                  try {
+                    const binary = atob(completeData.outputBase64)
+                    const bytes = new Uint8Array(binary.length)
+                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+                    const blob = new Blob([bytes], { type: "application/pdf" })
+                    completeData.downloadUrl = URL.createObjectURL(blob)
+                  } catch {}
+                }
                 setResult({
-                  downloadUrl: data.downloadUrl,
-                  fileName: data.fileName,
-                  size: data.size,
-                  originalSize: data.originalSize,
-                  jobId: data.jobId,
-                  pagePreviews: data.pagePreviews || [],
-                  mergeVerified: data.mergeVerified,
-                  mergePageCount: data.mergePageCount,
-                  mergeTotalPages: data.mergeTotalPages,
+                  downloadUrl: completeData.downloadUrl,
+                  fileName: completeData.fileName,
+                  size: completeData.size,
+                  originalSize: completeData.originalSize,
+                  jobId: completeData.jobId,
+                  pagePreviews: completeData.pagePreviews || [],
+                  mergeVerified: completeData.mergeVerified,
+                  mergePageCount: completeData.mergePageCount,
+                  mergeTotalPages: completeData.mergeTotalPages,
                 })
                 setState("ready")
                 setProgress(100)

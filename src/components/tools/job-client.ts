@@ -8,6 +8,7 @@ export interface SSEProgress {
 
 export interface SSEComplete {
   downloadUrl: string
+  outputBase64?: string
   fileName: string
   size: number
   originalSize: number

@@ -3016,6 +3016,25 @@ export function getToolConfigs(): Record<string, ToolConfig> {
       howItWorks: ["Enter the content for QR code", "Select QR type", "Download your QR code image"],
     },
 
+    "qr-code-generator": {
+      id: "qr-code-generator", name: "QR Code Generator", description: "Generate QR codes for any URL or text.",
+      maxFileSize: 0, accept: "", multiple: false,
+      options: [
+        { type: "textarea", label: "Content", key: "text", defaultValue: "", placeholder: "Enter URL, text, or data..." },
+        { type: "select", label: "Type", key: "type", defaultValue: "url",
+          choices: [
+            { label: "URL", value: "url" },
+            { label: "Text", value: "text" },
+            { label: "Email", value: "email" },
+            { label: "Phone", value: "phone" },
+          ],
+        },
+      ],
+      getDownloadName: (name) => `qr-code-${Date.now()}.png`,
+      faq: [{ q: "What formats are supported?", a: "Generates QR code as downloadable SVG image format." }],
+      howItWorks: ["Enter the content for QR code", "Select QR type", "Download your QR code image"],
+    },
+
     "utm-builder": {
       id: "utm-builder", name: "UTM Builder", description: "Build UTM parameters for campaign tracking.",
       maxFileSize: 0, accept: "", multiple: false,

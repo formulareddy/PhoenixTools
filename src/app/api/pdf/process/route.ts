@@ -1,3 +1,4 @@
+import { readFile } from "fs/promises"
 import { processPdfJob } from "@/lib/pdf-server"
 
 export const runtime = "nodejs"
@@ -64,8 +65,15 @@ export async function POST(req: Request) {
           send("progress", evt)
         }, sessionId || undefined)
 
+        let outputBase64 = ""
+        try {
+          const fileBuf = await readFile(result.outputPath)
+          outputBase64 = fileBuf.toString("base64")
+        } catch {}
+
         send("complete", {
           downloadUrl: `/api/pdf/download/${result.metadata?.jobId}`,
+          outputBase64,
           fileName: result.outputName,
           size: result.outputSize,
           originalSize: result.originalSize,

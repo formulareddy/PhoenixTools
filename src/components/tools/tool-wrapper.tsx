@@ -308,6 +308,25 @@ export function ToolWrapper({ config }: ToolWrapperProps) {
           }
         } else if (evt.type === "complete") {
           const c = evt.data as SSEComplete
+          if (c.outputBase64) {
+            try {
+              const binary = atob(c.outputBase64)
+              const bytes = new Uint8Array(binary.length)
+              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+              const ext = c.fileName.split(".").pop()?.toLowerCase() || ""
+              const mimeMap: Record<string, string> = {
+                pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+                webp: "image/webp", gif: "image/gif", bmp: "image/bmp",
+                mp4: "video/mp4", webm: "video/webm", avi: "video/x-msvideo", mov: "video/quicktime",
+                mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", flac: "audio/flac",
+                docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                zip: "application/zip", txt: "text/plain", html: "text/html", json: "application/json",
+              }
+              const mime = mimeMap[ext] || "application/octet-stream"
+              const blob = new Blob([bytes], { type: mime })
+              c.downloadUrl = URL.createObjectURL(blob)
+            } catch {}
+          }
           setResult(c)
           setState("ready")
           setProgress(100)

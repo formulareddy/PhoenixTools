@@ -1,3 +1,4 @@
+import { readFile } from "fs/promises"
 import { processImageJob, renderImagePreview } from "@/lib/image-server"
 
 export const runtime = "nodejs"
@@ -40,16 +41,26 @@ export async function POST(req: Request) {
         let compressedPreviews: string[] = []
 
         try {
-          const [origPreview, compPreview] = await Promise.all([
+          const [origPreview, compBuf] = await Promise.all([
             renderImagePreview(buf, 400),
-            renderImagePreview(await (await fetch(`file://${result.outputPath}`)).arrayBuffer(), 400).catch(() => ""),
+            readFile(result.outputPath).catch(() => null),
           ])
           originalPreviews = [origPreview]
-          compressedPreviews = compPreview ? [compPreview] : []
+          if (compBuf) {
+            const compPreview = await renderImagePreview(compBuf.buffer, 400).catch(() => "")
+            compressedPreviews = compPreview ? [compPreview] : []
+          }
+        } catch {}
+
+        let outputBase64 = ""
+        try {
+          const fileBuf = await readFile(result.outputPath)
+          outputBase64 = fileBuf.toString("base64")
         } catch {}
 
         send("complete", {
           downloadUrl: `/api/image/download/${result.metadata?.jobId}`,
+          outputBase64,
           fileName: result.outputName,
           size: result.outputSize,
           originalSize: result.originalSize,

@@ -5,7 +5,7 @@ import {
   findReplace, loremIpsum, textToSlug, duplicateRemover, textSorter,
   charCounter, base64EncodeDecode, urlEncodeDecode, jsonFormatter,
   jsFormatter, jsMinifier, jwtDecoder, regexTester, hashGenerator,
-  sqlFormatter, cssFormatter
+  sqlFormatter, cssFormatter, htmlFormatter
 } from "@/lib/text-tools"
 
 import { processSEOTool } from "@/lib/seo-tools"
@@ -27,7 +27,7 @@ const marketingToolIds = [
 const businessToolIds = [
   "invoice-generator", "receipt-generator", "quotation-generator", "purchase-order-generator",
   "business-proposal", "contract-generator", "profit-margin", "gst-vat-calculator",
-  "salary-calculator", "business-name-generator"
+  "salary-calculator", "business-name-generator", "qr-code-generator"
 ]
 
 export function processTextTool(
@@ -171,7 +171,7 @@ export function processTextTool(
       mimeType = "text/css"
       break
     case "html-formatter":
-      content = jsFormatter(options.text || "")
+      content = htmlFormatter(options.text || "")
       filename = `formatted-${Date.now()}.html`
       mimeType = "text/html"
       break

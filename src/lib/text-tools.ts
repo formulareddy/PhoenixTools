@@ -814,3 +814,49 @@ export function cssFormatter(text: string): string {
 ${output}
 \`\`\``
 }
+
+export function htmlFormatter(text: string): string {
+  let formatted = text
+    .replace(/>\s+</g, ">\n<")
+    .replace(/\n\s*\n/g, "\n")
+
+  const lines = formatted.split("\n")
+  let indent = 0
+  const result: string[] = []
+  const selfClosing = /^<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\b/i
+  const closing = /^<\//
+  const opening = /^<[a-zA-Z]/
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+
+    if (closing.test(trimmed)) {
+      indent = Math.max(0, indent - 1)
+    }
+
+    result.push("  ".repeat(indent) + trimmed)
+
+    if (opening.test(trimmed) && !selfClosing.test(trimmed) && !trimmed.endsWith("/>") && !/<[^>]*>.*<\/[^>]+>/.test(trimmed)) {
+      indent++
+    }
+  }
+
+  const output = result.join("\n").trim()
+  const totalLines = output.split("\n").length
+  const tags = (output.match(/<[a-zA-Z][^>]*>/g) || []).length
+
+  return `# HTML Formatter Result
+
+## Statistics
+| Metric | Value |
+|--------|-------|
+| Characters | ${output.length} |
+| Lines | ${totalLines} |
+| Tags | ${tags} |
+
+## Formatted HTML
+\`\`\`html
+${output}
+\`\`\``
+}
