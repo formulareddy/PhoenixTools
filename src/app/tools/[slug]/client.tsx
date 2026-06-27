@@ -2,17 +2,9 @@
 
 import Link from "next/link"
 import { tools } from "@/lib/constants"
-import { lazy, Suspense } from "react"
 import { getToolConfigs } from "@/components/tools/tool-configs"
-
-const ToolWrapper = lazy(() => import("@/components/tools/tool-wrapper").then(m => ({ default: m.ToolWrapper })))
-const MergeWrapper = lazy(() => import("@/components/tools/merge-wrapper").then(m => ({ default: m.MergeWrapper })))
-
-const loadingFallback = (
-  <div className="pt-32 text-center px-5">
-    <div className="animate-spin w-6 h-6 border-2 border-[#D97757] border-t-transparent rounded-full mx-auto" />
-  </div>
-)
+import { ToolWrapper } from "@/components/tools/tool-wrapper"
+import { MergeWrapper } from "@/components/tools/merge-wrapper"
 
 export default function ToolPageClient({ slug }: { slug: string }) {
   const tool = tools.find((t) => t.id === slug)
@@ -28,13 +20,9 @@ export default function ToolPageClient({ slug }: { slug: string }) {
     )
   }
 
-  if (slug === "pdf-merge") {
-    return <Suspense fallback={loadingFallback}><MergeWrapper /></Suspense>
-  }
+  if (slug === "pdf-merge") return <MergeWrapper />
 
-  if (config) {
-    return <Suspense fallback={loadingFallback}><ToolWrapper config={config} /></Suspense>
-  }
+  if (config) return <ToolWrapper config={config} />
 
   return (
     <div className="pt-20 sm:pt-24 pb-16 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
